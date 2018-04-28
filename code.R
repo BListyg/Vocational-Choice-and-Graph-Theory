@@ -99,57 +99,43 @@ riasec = function(x)
     return(NULL)}
 }
 
-riasec.data = do.call("rbind",t(apply(X = matrix(as.character(complete.links$X5)),MARGIN = 1,FUN = riasec)))
+#This may result in a timeout error. Final data can be found on my github.
+#read.csv("riasec_data.csv",header=T)
+riasec_data = do.call("rbind",t(apply(X = matrix(as.character(complete.links$X5)),MARGIN = 1,FUN = riasec)))
 
-riasec.data = data.frame(riasec.data)
+riasec_data = data.frame(riasec_data)
 
-#Cleaning income data
-#Leave annual income alone
-#Convert hourly income to annual
-#Remove punctuation
-#Remove "annual" and "hourly"
+#riasec_data<-read.csv("riasec_data.csv",header=T)
 
-riasec.data$income.length = do.call(rbind,
-                                    lapply(str_split(string = riasec.data$income,pattern = " "),length))
+riasec_data$income <- as.character(riasec_data$income)
 
-riasec.data$income <- as.numeric(c(
-#Only annual
-removePunctuation(riasec.data$income[which(riasec.data$income.length==1)]),
+income<-do.call(
+  rbind,
+  str_split(
+    gsub(","
+         ,""
+         ,riasec_data$income
+    )," ",4))[,c(3,4)]
 
-#only hourly, convert to annual
-#Multiplied by 2000 (50 working weeks, 40 hours per week) to get annual
-#UGLY line of code
-as.numeric(gsub("[$]","",gsub("hourly",NA,(unlist(str_split(string = riasec.data$income[which(riasec.data$income.length==2)],pattern = " "))))[complete.cases(gsub("hourly",NA,(unlist(str_split(string = riasec.data$income[which(riasec.data$income.length==2)],pattern = " ")))))])) * 2000,
+income[,1]<-gsub("[\\$]","",income[,1])
 
-#Both, extract 3rd element of string
-removePunctuation(word(riasec.data$income[which(riasec.data$income.length==3)],3))))
+income[,1]<-gsub("[\\+]","",income[,1])
 
-##Not sure if I need this portion anymore
-final.data = merge(riasec.data[!duplicated(riasec.data$X5),], complete.links[!duplicated(complete.links$X5),], by = "X5")
+income <- as.matrix(income[,1])
 
-'final.data = cbind(final.data, income = do.call(rbind, str_split(final.data$income, pattern = " "))[,c(3,4)])
+income <- trimws(income)
 
-final.data = final.data[which(final.data$income.2 == "annual"),]
-final.data$income = NULL
-final.data$income.2 = NULL
-final.data$income.1 = as.numeric(gsub("[\\$,]", "", final.data$income.1))
-final.data[,c(2:7)] = apply(X = final.data[,c(2:7)], MARGIN = 2, FUN = function(x){as.numeric(as.character(x))})
-final.data = melt(final.data, id.vars = c("X5", "title", "X1", "X2", "X3", "X4", "income.1"))
+income <- apply(matrix(income), 1, as.numeric)
 
-colnames(final.data) = c("link", "title","career.cluster", "career.pathway", "code","occupation","income","interest","score")'
+riasec_data$income <- income
 
+riasec_data<-riasec_data[order(riasec_data$income, decreasing = FALSE),]
 
-#Restructuring data from long to wide
-final.data = reshape(final.data, 
-        timevar = "interest",
-        idvar = c("link", "title", "career.cluster", "career.pathway", "code", "occupation", "income"),
-        direction = "wide")
+riasec_data$income[c(1:6)] <- riasec_data$income[c(1:6)]*2000
 
-###
+riasec_data$title <- trimws(riasec_data$title)
 
-#riasec_data <- read.csv("riasec_data.csv", header=T)
-
-###Network portion below###
+#####
 
 ccm <- read.csv("https://raw.githubusercontent.com/BListyg/Vocational-Choice-and-Graph-Theory/master/Career%20Changers%20Matrix%20.csv", header=T)
 csm <- read.csv("https://raw.githubusercontent.com/BListyg/Vocational-Choice-and-Graph-Theory/master/Career%20Starters%20Matrix%20.csv", header=T)
@@ -157,29 +143,29 @@ csm <- read.csv("https://raw.githubusercontent.com/BListyg/Vocational-Choice-and
 #ccm$Index <- (max(ccm$Index)+1 - ccm$Index)
 
 ccm.graph <- simplify(graph_from_data_frame(
-                        data.frame(ccm$Title, 
-                          ccm$Related.Title), 
-                              directed = F))
+  data.frame(ccm$Title, 
+             ccm$Related.Title), 
+  directed = F))
 
 ##
 
 ccm.data <- cbind(
   data.frame(
-  Title = unique(ccm$Title)),
+    Title = unique(ccm$Title)),
   O.NET.SOC.Code = unique(ccm$O.NET.SOC.Code),
-
+  
   data.frame(degree = degree(ccm.graph), row.names = NULL),
-
+  
   data.frame(closeness = closeness(ccm.graph), row.names = NULL),
-
+  
   data.frame(betweenness = betweenness(ccm.graph), row.names = NULL))
 
 ##
 
 csm.graph <- simplify(graph_from_data_frame(
-                        data.frame(csm$Title, 
-                            csm$Related.Title), 
-                              directed = F))
+  data.frame(csm$Title, 
+             csm$Related.Title), 
+  directed = F))
 
 ##
 
@@ -194,7 +180,7 @@ csm.data <- cbind(
   
   data.frame(betweenness = betweenness(csm.graph), row.names = NULL))
 
-##
+#####
 
 #data.frame(eigen = eigen_centrality(ccm.graph), row.names = NULL)))
 
@@ -204,7 +190,7 @@ ccm.data = ccm.data[order(ccm.data$title),]
 
 #head(ccm.data)
 
-##
+#####
 
 csm.data$title = paste(csm.data$O.NET.SOC.Code," - ",csm.data$Title,sep = "")
 
@@ -216,16 +202,47 @@ colnames(csm.data)[-ncol(ccm.data)] <- paste("csm.",colnames(csm.data)[-ncol(csm
 
 colnames(ccm.data)[-ncol(ccm.data)] <- paste("ccm.",colnames(ccm.data)[-ncol(ccm.data)],sep = "")
 
-final_data <- merge(x = final.data, y = csm.data, by = "title", all = TRUE)
+riasec_data <- merge(x = riasec_data, y = csm.data, by = "title", all = TRUE)
 
-final_data <- merge(x = final.data, y = ccm.data, by = "title", all = TRUE)
+riasec_data <- merge(x = riasec_data, y = ccm.data, by = "title", all = TRUE)
 
-final_data$income <- gsub("[\\$,]", "", final_data$income)
+#####
 
-final_data$income <- gsub("annual", "", final_data$income)
+riasec_data <- merge(x = complete.links,
+        y = riasec_data,
+        by = "X5",
+        all = TRUE)
 
-final_data$income <- trimws(final_data$income)
+#####
 
-final_data$income.string.length <- do.call(rbind,lapply(str_split(final_data$income, " "), length))
+riasec_data$Artistic <- as.numeric(as.character(riasec_data$Artistic))
 
-final_data[order(final_data$income.string.length),]
+riasec_data$Enterprising <- as.numeric(as.character(riasec_data$Enterprising))
+
+riasec_data$Conventional <- as.numeric(as.character(riasec_data$Conventional))
+
+riasec_data$Investigative <- as.numeric(as.character(riasec_data$Investigative))
+
+riasec_data$Social <- as.numeric(as.character(riasec_data$Social))
+
+riasec_data$Realistic <- as.numeric(as.character(riasec_data$Realistic))
+
+riasec_data$income <- as.numeric(as.character(riasec_data$income))
+
+riasec_data$X.1 = NULL
+riasec_data$X = NULL
+
+head(riasec_data)
+
+#####
+
+
+#####
+
+
+
+
+
+
+
+
