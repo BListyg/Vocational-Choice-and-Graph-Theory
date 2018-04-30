@@ -4,6 +4,9 @@ library(stringr)
 library(reshape2)
 library(data.table)
 library(tm)
+library(ggplot2)
+library(cowplot)
+library(lme4)
 
 #Obtaining links to different career webpages
 career.cluster = data.frame(cbind(
@@ -232,17 +235,88 @@ riasec_data$income <- as.numeric(as.character(riasec_data$income))
 riasec_data$X.1 = NULL
 riasec_data$X = NULL
 
+colnames(riasec_data)[c(1:5)] <- c("url",
+                                   'career_cluster',
+                                   'career_pathway',
+                                   'SOC',
+                                   'job_title')
+
 head(riasec_data)
 
 #####
 
+V(ccm.graph)$color <- riasec_data$X1[match( V(ccm.graph)$name,  riasec_data$X4 ) ]
+
+V(csm.graph)$color <- riasec_data$X1[match( V(csm.graph)$name,  riasec_data$X4 ) ]
 
 #####
 
+plot(ccm.graph, vertex.label = NA, vertex.size = 3.5, layout = layout_nicely, edge.width = 0.5)
 
+plot(csm.graph, vertex.label = NA, vertex.size = 3.5, layout = layout_nicely, edge.width = 0.5)
 
+ #####
 
+complete_riasec_data <- unique(riasec_data)
 
+#####
+
+art <- ggplot(complete_riasec_data, aes(Artistic, log(income), colour = career_cluster))+ theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)), size = 1) + guides(fill=FALSE)+ geom_smooth(se = FALSE, method = "lm")
+real <- ggplot(complete_riasec_data, aes(Realistic, log(income), colour = career_cluster))+ theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)), size = 1) + guides(fill=FALSE)+ geom_smooth(se = FALSE, method = "lm")
+conv <- ggplot(complete_riasec_data, aes(Conventional, log(income), colour = career_cluster))+ theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)), size = 1) + guides(fill=FALSE)+ geom_smooth(se = FALSE, method = "lm")
+soci <- ggplot(complete_riasec_data, aes(Social, log(income), colour = career_cluster))+ theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)), size = 1) + guides(fill=FALSE)+ geom_smooth(se = FALSE, method = "lm")
+entr <- ggplot(complete_riasec_data, aes(Enterprising, log(income), colour = career_cluster))+ theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)), size = 1) + guides(fill=FALSE)+ geom_smooth(se = FALSE, method = "lm")
+invest <- ggplot(complete_riasec_data, aes(Investigative, log(income), colour = career_cluster))+ theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)), size = 1) + guides(fill=FALSE)+ geom_smooth(se = FALSE, method = "lm")
+
+plot_grid(real,
+          invest,
+          art,
+          soci,
+          entr,
+          conv)
+
+deg <- ggplot(complete_riasec_data, aes(csm.degree, log(income)))+ theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)), size = 1) + guides(fill=FALSE)
+
+betw <- ggplot(complete_riasec_data, aes(csm.betweenness, log(income)))+ theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)), size = 1) + guides(fill=FALSE)
+
+close <- ggplot(complete_riasec_data, aes(csm.closeness, log(income)))+ theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)), size = 1) + guides(fill=FALSE) + geom_smooth()
+
+plot_grid(deg,betw,close)
+
+plot_grid(
+ggplot(complete_riasec_data, aes(csm.closeness, log(income), colour = career_cluster)) + theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)))+ geom_smooth(se = FALSE, method = "lm"),
+ggplot(complete_riasec_data, aes(ccm.closeness, log(income), colour = career_cluster)) + theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)))+ geom_smooth(se = FALSE, method = "lm")
+)
+
+plot_grid(
+ggplot(complete_riasec_data, aes(csm.betweenness, log(income), colour = career_cluster)) + theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)))+ geom_smooth(se = FALSE, method = "lm"),
+ggplot(complete_riasec_data, aes(ccm.betweenness, log(income), colour = career_cluster)) + theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)))+ geom_smooth(se = FALSE, method = "lm")
+)
+
+plot_grid(
+ggplot(complete_riasec_data, aes(csm.degree, log(income), colour = career_cluster)) + theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)))+ geom_smooth(se = FALSE, method = "lm"),
+ggplot(complete_riasec_data, aes(ccm.degree, log(income), colour = career_cluster)) + theme(legend.position="none") + geom_point(aes(colour = factor(career_cluster)))+ geom_smooth(se = FALSE, method = "lm")
+)
+
+plot_grid(
+ggplot(complete_riasec_data, aes(x = Realistic, y = career_cluster)) + geom_density_ridges2(),
+ggplot(complete_riasec_data, aes(x = Investigative, y = career_cluster)) + geom_density_ridges2(),
+ggplot(complete_riasec_data, aes(x = Artistic, y = career_cluster)) + geom_density_ridges2(),
+ggplot(complete_riasec_data, aes(x = Social, y = career_cluster)) + geom_density_ridges2(),
+ggplot(complete_riasec_data, aes(x = Enterprising, y = career_cluster)) + geom_density_ridges2(),
+ggplot(complete_riasec_data, aes(x = Conventional, y = career_cluster)) + geom_density_ridges2())
+
+plot_grid(
+  ggplot(complete_riasec_data, aes(x = ccm.betweenness, y = career_cluster)) + geom_density_ridges2(),
+  ggplot(complete_riasec_data, aes(x = ccm.closeness, y = career_cluster)) + geom_density_ridges2(),
+  ggplot(complete_riasec_data, aes(x = ccm.degree, y = career_cluster)) + geom_density_ridges2(),
+  ggplot(complete_riasec_data, aes(x = ccm.betweenness, y = career_cluster)) + geom_density_ridges2(),
+  ggplot(complete_riasec_data, aes(x = csm.closeness, y = career_cluster)) + geom_density_ridges2(),
+  ggplot(complete_riasec_data, aes(x = csm.degree, y = career_cluster)) + geom_density_ridges2())
+
+lmer ( log(income) ~ Realistic + ( Realistic | career_cluster ), complete_riasec_data )
+
+riasec_data
 
 
 
