@@ -1,4 +1,4 @@
-# Vocational-Choice-and-Graph-Theory
+# Vocational-Interests-Data
 
 I collected vocational interest data from ~1200 O^NET Webpages to play around with. 
 
